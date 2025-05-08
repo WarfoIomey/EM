@@ -64,4 +64,3 @@ if __name__ == '__main__':
     lst.add_obj(ObjList('Данные 2'))
     lst.add_obj(ObjList('Данные 3'))
     res: list = lst.get_data()
-    print(res)
