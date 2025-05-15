@@ -134,7 +134,3 @@ def main():
             game.open_cell(row, col)
         except ValueError:
             print("Ошибка: введите два числа через пробел!")
-
-
-if __name__ == '__main__':
-    # main()

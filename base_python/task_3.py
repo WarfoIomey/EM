@@ -11,7 +11,7 @@ class Server:
 
     def send(self, data):
         if self.router is not None:
-            router.buffer.append((data.data, data.server))
+            self.router.buffer.append((data.data, data.server))
 
     def get_ip(self):
         return self.ip_address
@@ -52,21 +52,3 @@ class Data:
     def __init__(self, data, server):
         self.data = data
         self.server = server
-
-
-# if __name__ == '__main__':
-    # sv = Server()
-    # sv2 = Server()
-    # router = Router()
-    # router.link(sv)
-    # router.link(sv2)
-    # data = Data('Hello my friend', sv2)
-    # data_two = Data('dont hello', sv2)
-    # sv.send(data)
-    # sv.send(data_two)
-    # print(router.buffer)
-    # router.send_data()
-    # print(router.buffer)
-    # print(sv2.packegs)
-    # print(sv2.get_data())
-    # print(sv2.get_data())

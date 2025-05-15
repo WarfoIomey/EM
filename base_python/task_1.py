@@ -51,16 +51,8 @@ class LinkedList:
     def get_data(self) -> list:
         """Получение списка из строк со всех объектов связного списка."""
         current_obj = self.head
-        result = []
+        result: list = []
         while current_obj is not None:
             result.append(current_obj.data)
             current_obj = current_obj.next
         return result
-
-
-if __name__ == '__main__':
-    lst = LinkedList()
-    lst.add_obj(ObjList('Данные 1'))
-    lst.add_obj(ObjList('Данные 2'))
-    lst.add_obj(ObjList('Данные 3'))
-    res: list = lst.get_data()
