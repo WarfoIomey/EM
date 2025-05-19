@@ -4,6 +4,7 @@ import psycopg2
 from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, Date
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
 
+
 load_dotenv()
 
 DB_HOST = os.environ.get('DB_HOST', 'localhost')
@@ -102,7 +103,6 @@ def main():
             buy_id = Column(Integer, ForeignKey('buy.buy_id'))
             book_id = Column(Integer, ForeignKey('book.book_id'))
             amount = Column(Integer, nullable=False)
-
             buy = relationship('Buy', back_populates='buy_books')
             book = relationship('Book', back_populates='buy_books')
 
@@ -119,7 +119,6 @@ def main():
             step_id = Column(Integer, ForeignKey('step.step_id'))
             date_step_beg = Column(Date)
             date_step_end = Column(Date)
-
             buy = relationship('Buy', back_populates='buy_steps')
             step = relationship('Step', back_populates='buy_steps')
 
