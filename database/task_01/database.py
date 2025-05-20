@@ -15,9 +15,7 @@ DB_NAME = os.environ.get('DB_NAME', 'my_database')
 
 
 def create_database():
-    """Создает базу данных, если она не существует"""
     try:
-        print(DB_PASS)
         conn = psycopg2.connect(
             host=DB_HOST,
             port=DB_PORT,
@@ -168,6 +166,7 @@ def main():
             session.add_all([new_buy_book, new_buy_step])
             session.commit()
             print("Данные добавлены добавлен")
+            session.close()
     except Exception as e:
         print(f"Ошибка: {e}")
 
