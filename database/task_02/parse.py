@@ -25,6 +25,7 @@ DB_NAME = os.environ.get('DB_NAME', 'my_database')
 DATABASE_URL = f'postgresql+psycopg2://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}'
 engine = create_engine(DATABASE_URL)
 Base = declarative_base()
+Session = sessionmaker(bind=engine)
 
 
 class SpimexTraidingResult(Base):
@@ -79,18 +80,14 @@ def get_links():
     page_num = 1
     while True:
         url = f"{base_url}?page=page-{page_num}&bxajaxid=d609bce6ada86eff0b6f7e49e6bae904"
-        try:
-            response = urlopen(url)
-            html = response.read().decode("utf-8")
-            pattern = r'href="(/upload/reports/oil_xls/oil_xls_20(2[3-9]|[3-9]\d)\d{10}\.xls\?r=\d+)'
-            links = re.findall(pattern, html)
-            if not links:
-                break
-            all_links.extend(links)
-            page_num += 1
-        except Exception as e:
-            print(f"Ошибка на странице {page_num}:", e)
+        response = urlopen(url)
+        html = response.read().decode("utf-8")
+        pattern = r'href="(/upload/reports/oil_xls/oil_xls_20(2[3-9]|[3-9]\d)\d{10}\.xls\?r=\d+)'
+        links = re.findall(pattern, html)
+        if not links:
             break
+        all_links.extend(links)
+        page_num += 1
 
 
 def upload_xls():
@@ -100,18 +97,7 @@ def upload_xls():
     print('Все файлы скачаны')
 
 
-def create_table():
-    try:
-        engine = create_engine(DATABASE_URL)
-        Base.metadata.create_all(engine)
-        print("Таблицы созданы успешно")
-    except Exception as e:
-        print(f"Ошибка: {e}")
-
-
 def bulk_save_data(data_list):
-    engine = create_engine(DATABASE_URL)
-    Session = sessionmaker(bind=engine)
     with Session() as session:
         try:
             session.bulk_insert_mappings(
@@ -141,11 +127,8 @@ def pars_xls(file_name):
     ):
         while sheet.cell_value(row, constants.FIRST_COLUMN) != 'Итого:':
             product = sheet.cell_value(row, constants.FIRST_COLUMN)
-            if len(product) != 11:
-                row += 1
-                continue
             count_contract = sheet.cell_value(row, constants.COLUMN_CONTRACT)
-            if count_contract == '-':
+            if len(product) != 11 or count_contract == '-':
                 row += 1
                 continue
             data = {
@@ -176,7 +159,7 @@ def pars_xls(file_name):
 
 def main():
     create_database()
-    create_table()
+    Base.metadata.create_all(engine)
     get_links()
     upload_xls()
     print('Загрузка данных в БД')
