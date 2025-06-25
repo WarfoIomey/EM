@@ -4,6 +4,7 @@ import psycopg2
 from sqlalchemy import create_engine, Column, Date, DateTime, Integer, String
 from sqlalchemy.sql import func
 from sqlalchemy.orm import declarative_base, sessionmaker
+import time
 from urllib.request import urlopen, urlretrieve
 import xlrd
 import re
@@ -170,4 +171,6 @@ def main():
 
 
 if __name__ == '__main__':
+    t0 = time.time()
     main()
+    print(time.time() - t0)
