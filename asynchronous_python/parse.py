@@ -2,18 +2,18 @@ import os
 import asyncio
 import aiohttp
 import asyncpg
-import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from dotenv import load_dotenv
-from sqlalchemy import Column, Date, DateTime, Integer, String, select
+from sqlalchemy import Column, Date, DateTime, Integer, String
 from sqlalchemy.sql import func
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
-    async_sessionmaker, 
+    async_sessionmaker,
     create_async_engine
 )
+import time
 from urllib.parse import urljoin
 import xlrd
 import re
