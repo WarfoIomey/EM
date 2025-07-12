@@ -1,80 +1,18 @@
 import os
-from dotenv import load_dotenv
-import psycopg2
-from sqlalchemy import create_engine, Column, Date, DateTime, Integer, String
-from sqlalchemy.sql import func
-from sqlalchemy.orm import declarative_base, sessionmaker
-import time
+
 from urllib.request import urlopen, urlretrieve
+from urllib.error import URLError, HTTPError
 import xlrd
 import re
 
 import constants
+from models import SpimexTraidingResult
+from database.task_01.db_config import db_config
 
-
-load_dotenv()
 
 base_url = "https://spimex.com/markets/oil_products/trades/results/"
 url_files = "https://spimex.com"
-all_links = []
 files_dir = os.path.join(os.path.dirname(__file__), 'excel_files')
-DB_HOST = os.environ.get('DB_HOST', 'localhost')
-DB_PORT = os.environ.get('DB_PORT', '5432')
-DB_USER = os.environ.get('DB_USER', 'postgres')
-DB_PASS = os.environ.get('DB_PASS', '')
-DB_NAME = os.environ.get('DB_NAME', 'my_database')
-DATABASE_URL = f'postgresql+psycopg2://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}'
-engine = create_engine(DATABASE_URL)
-Base = declarative_base()
-Session = sessionmaker(bind=engine)
-
-
-class SpimexTraidingResult(Base):
-    __tablename__ = 'pimex_trading_results'
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    exchange_product_id = Column(String, nullable=False)
-    exchange_product_name = Column(String, nullable=False)
-    oil_id = Column(String(4), nullable=False)
-    delivery_basis_id = Column(String(3), nullable=False)
-    delivery_basis_name = Column(String, nullable=False)
-    delivery_type_id = Column(String(1), nullable=False)
-    volume = Column(Integer, nullable=False)
-    total = Column(Integer, nullable=False)
-    count = Column(Integer, nullable=False)
-    date = Column(Date)
-    created_on = Column(DateTime, default=func.now())
-    updated_on = Column(
-        DateTime,
-        default=func.now(),
-        onupdate=func.now()
-    )
-
-
-def create_database():
-    try:
-        conn = psycopg2.connect(
-            host=DB_HOST,
-            port=DB_PORT,
-            user=DB_USER,
-            password=DB_PASS,
-            dbname='postgres'
-        )
-        conn.autocommit = True
-        cursor = conn.cursor()
-        cursor.execute(
-            f"SELECT 1 FROM pg_database WHERE datname = '{DB_NAME}'"
-        )
-        if not cursor.fetchone():
-            cursor.execute(f"CREATE DATABASE {DB_NAME}")
-            print(f'База данных {DB_NAME} создана')
-        else:
-            print(f'База данных {DB_NAME} уже существует')
-    except psycopg2.OperationalError as e:
-        print(f'Ошибка подключения к PostgreSQL: {e}')
-        raise
-    finally:
-        if 'conn' in locals():
-            conn.close()
 
 
 def get_links():
@@ -87,33 +25,37 @@ def get_links():
         links = re.findall(pattern, html)
         if not links:
             break
-        all_links.extend(links)
+        yield from links
         page_num += 1
 
 
-def upload_xls():
-    for index, link in enumerate(all_links):
-        filename = os.path.join(files_dir, f"{index}.xls")
+def upload_xls(link):
+    date_match = re.search(r"(\d{8})", link[0])
+    filename = os.path.join(files_dir, f"{date_match.group(1)}.xls")
+    try:
         urlretrieve(url_files + link[0], filename)
-    print('Все файлы скачаны')
+        print(f'Файл {link[0]} скачан')
+        return date_match.group(1)
+    except HTTPError as e:
+        print(f"Ошибка HTTP {e.code} при скачивании {link[0]}")
+    except URLError as e:
+        print(f"Ошибка URL: {e.reason}")
+    except Exception as e:
+        print(f"Неизвестная ошибка: {str(e)}")
 
 
-def bulk_save_data(data_list):
-    with Session() as session:
-        try:
-            session.bulk_insert_mappings(
-                SpimexTraidingResult,
-                data_list
-            )
-            session.commit()
-        except Exception as e:
-            session.rollback()
-            raise e
-        finally:
-            session.close()
+def bulk_save_data(db, data_list):
+    try:
+        db.bulk_insert_mappings(
+            SpimexTraidingResult,
+            data_list
+        )
+        db.commit()
+    except Exception as e:
+        raise e
 
 
-def pars_xls(file_name):
+def pars_xls(db, file_name):
     file = os.path.join(files_dir, f"{file_name}")
     wb = xlrd.open_workbook(file)
     sheet = wb.sheet_by_index(0)
@@ -152,25 +94,21 @@ def pars_xls(file_name):
             }
             all_data.append(data)
             if len(all_data) >= constants.LIMIT_SAVE:
-                bulk_save_data(all_data)
+                bulk_save_data(db, all_data)
                 all_data = []
             row += 1
-        bulk_save_data(all_data)
+        bulk_save_data(db, all_data)
 
 
 def main():
-    create_database()
-    Base.metadata.create_all(engine)
-    get_links()
-    upload_xls()
-    print('Загрузка данных в БД')
-    for num in range(len(all_links)):
-        pars_xls(f'{num}.xls')
-        print(f'Файл {num}.xls обработан')
-    print('Данные успешно добавлены в БД')
+    SessionLocal = db_config.init_db()
+    db_config.create_tables()
+    with SessionLocal() as db:
+        for link in get_links():
+            file_name = upload_xls(link)
+            pars_xls(db, f'{file_name}.xls')
+            print(f'Файл {file_name}.xls обработан')
 
 
 if __name__ == '__main__':
-    t0 = time.time()
     main()
-    print(time.time() - t0)
