@@ -25,6 +25,7 @@ files_dir = os.path.join(os.path.dirname(__file__), 'excel_files')
 
 
 async def get_links():
+    """Генератор для получение ссылок на файлы."""
     timeout = aiohttp.ClientTimeout(total=60)
     page_num = 1
     async with aiohttp.ClientSession(timeout=timeout) as session:
