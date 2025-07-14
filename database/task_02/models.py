@@ -12,7 +12,7 @@ Base = db_config.Base
 
 
 class SpimexTraidingResult(Base):
-    __tablename__ = 'pimex_trading_results'
+    __tablename__ = 'spimex_trading_results'
     id = Column(Integer, primary_key=True, autoincrement=True)
     exchange_product_id = Column(String, nullable=False)
     exchange_product_name = Column(String, nullable=False)
