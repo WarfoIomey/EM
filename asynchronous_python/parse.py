@@ -24,7 +24,7 @@ url_files = "https://spimex.com"
 files_dir = os.path.join(os.path.dirname(__file__), 'excel_files')
 
 
-async def get_links(session: aiohttp.ClientSession = None):
+async def get_links():
     timeout = aiohttp.ClientTimeout(total=60)
     page_num = 1
     async with aiohttp.ClientSession(timeout=timeout) as session:
