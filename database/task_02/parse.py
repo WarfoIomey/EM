@@ -1,4 +1,6 @@
 import os
+from pathlib import Path
+import time
 
 from urllib.request import urlopen, urlretrieve
 from urllib.error import URLError, HTTPError
@@ -108,7 +110,13 @@ def main():
             file_name = upload_xls(link)
             pars_xls(db, f'{file_name}.xls')
             print(f'Файл {file_name}.xls обработан')
+    for filename in os.listdir(files_dir):
+        if filename.endswith(".xls"):
+            file_path = os.path.join(files_dir, filename)
+            os.remove(file_path)
 
 
 if __name__ == '__main__':
+    t0 = time.time()
     main()
+    print(time.time() - t0)
