@@ -48,8 +48,11 @@ async def get_links():
 
 async def upload_xls(link):
     timeout = aiohttp.ClientTimeout(total=60)
-    date_match = re.search(r"(\d{8})", link[0])
-    filename = os.path.join(files_dir, f"{date_match.group(1)}.xls")
+    date = datetime.strptime(
+        re.search(r"(\d{8})", link[0]).group(1),
+        "%Y%m%d"
+    ).date()
+    filename = os.path.join(files_dir, f"{date}.xls")
     url = url_files + link[0]
     async with aiohttp.ClientSession(timeout=timeout) as session:
         async with session.get(url) as response:
@@ -62,14 +65,14 @@ async def upload_xls(link):
     return filename
 
 
-async def bulk_save_data(session, data_list):
-    await session.run_sync(
-        lambda sync_session: sync_session.bulk_insert_mappings(
-            SpimexTraidingResult,
-            data_list
+async def bulk_save_data(session, file_data):
+    if file_data is not None:
+        await session.run_sync(
+            lambda sync_session: sync_session.add_all(
+                file_data
+            )
         )
-    )
-    await session.commit()
+        await session.commit()
 
 
 async def pars_xls(file_name, pool, loop):
@@ -85,8 +88,12 @@ def parse_xls_sync(file_name):
     file = os.path.join(files_dir, f"{file_name}")
     wb = xlrd.open_workbook(file)
     sheet = wb.sheet_by_index(0)
-    date = datetime.strptime(sheet.cell_value(3, 1)[13:], "%d.%m.%Y").date()
-    all_data = []
+    date_str = sheet.cell_value(3, 1)[13:]
+    try:
+        date = datetime.strptime(date_str, "%d.%m.%Y").date()
+    except ValueError:
+        date = None
+    model_objects = []
     row = constants.START_ROW
     if (
         sheet.cell_value(
@@ -100,27 +107,27 @@ def parse_xls_sync(file_name):
             if len(product) != 11 or count_contract == '-':
                 row += 1
                 continue
-            data = {
-                "exchange_product_id": product,
-                "exchange_product_name": sheet.cell_value(
+            model_object = SpimexTraidingResult(
+                exchange_product_id=product,
+                exchange_product_name=sheet.cell_value(
                     row,
                     constants.FIRST_COLUMN+1
                 ),
-                "oil_id": product[:4],
-                "delivery_basis_id": product[4:7],
-                "delivery_basis_name": sheet.cell_value(
+                oil_id=product[:4],
+                delivery_basis_id=product[4:7],
+                delivery_basis_name=sheet.cell_value(
                     row,
                     constants.FIRST_COLUMN+2
                 ),
-                "delivery_type_id": product[-1],
-                "volume": int(sheet.cell_value(row, constants.FIRST_COLUMN+3)),
-                "total": int(sheet.cell_value(row, constants.FIRST_COLUMN+4)),
-                "count": int(count_contract),
-                "date": date,
-            }
-            all_data.append(data)
+                delivery_type_id=product[-1],
+                volume=int(sheet.cell_value(row, constants.FIRST_COLUMN+3)),
+                total=int(sheet.cell_value(row, constants.FIRST_COLUMN+4)),
+                count=int(count_contract),
+                date=date
+            )
+            model_objects.append(model_object)
             row += 1
-    return all_data
+        return model_objects
 
 
 async def process_file(link, session_maker, pool, loop):
