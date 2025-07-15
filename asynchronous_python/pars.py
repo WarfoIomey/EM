@@ -148,12 +148,14 @@ async def main():
         await db_config.create_tables()
         loop = asyncio.get_running_loop()
         with ThreadPoolExecutor() as pool:
+            semaphore = asyncio.Semaphore(10)
             tasks = []
             async for link in get_links():
-                task = asyncio.create_task(
-                    process_file(link, session_maker, pool, loop)
-                )
-                tasks.append(task)
+                async with semaphore:
+                    task = asyncio.create_task(
+                        process_file(link, session_maker, pool, loop)
+                    )
+                    tasks.append(task)
             await asyncio.gather(*tasks)
     except Exception as e:
         print(f"Ошибка: {e}")
